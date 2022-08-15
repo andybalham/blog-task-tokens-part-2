@@ -7,7 +7,7 @@ import { nanoid } from 'nanoid';
 import { LoanApplication } from 'src/LoanApplication';
 import TaskTokenTestStack from '../src/TaskTokenTestStack';
 
-jest.setTimeout(60 * 1000);
+jest.setTimeout(2 * 60 * 1000);
 
 describe('TaskTokenTestStack Test Suite', () => {
   //
@@ -85,5 +85,87 @@ describe('TaskTokenTestStack Test Suite', () => {
     const status = await loanProcessorStateMachine.getStatusAsync();
 
     expect(status).toEqual('FAILED');
+
+    const lastEvent = await loanProcessorStateMachine.getLastEventAsync();
+
+    expect(
+      lastEvent?.executionFailedEventDetails?.error === '"States.Timeout"'
+    );
+  });
+
+  it('tests no reply', async () => {
+    // Arrange
+
+    const loanApplication: LoanApplication = {
+      applicationReference: `app-${nanoid()}`,
+      property: {
+        nameOrNumber: 'Ghost',
+        postcode: 'PO1 1CE',
+      },
+    };
+
+    // Act
+
+    await loanProcessorStateMachine.startExecutionAsync(loanApplication);
+
+    // Await
+
+    const { timedOut } = await testClient.pollTestAsync({
+      until: async () => loanProcessorStateMachine.isExecutionFinishedAsync(),
+      intervalSeconds: 10,
+      timeoutSeconds: 90,
+    });
+
+    // Assert
+
+    expect(timedOut).toEqual(false);
+
+    const status = await loanProcessorStateMachine.getStatusAsync();
+
+    expect(status).toEqual('FAILED');
+
+    const lastEvent = await loanProcessorStateMachine.getLastEventAsync();
+
+    expect(
+      lastEvent?.executionFailedEventDetails?.error === '"States.Timeout"'
+    );
+  });
+
+  it('tests failed valuation', async () => {
+    // Arrange
+
+    const loanApplication: LoanApplication = {
+      applicationReference: `app-${nanoid()}`,
+      property: {
+        nameOrNumber: 'Fake',
+        postcode: 'PO1 1CE',
+      },
+    };
+
+    // Act
+
+    await loanProcessorStateMachine.startExecutionAsync(loanApplication);
+
+    // Await
+
+    const { timedOut } = await testClient.pollTestAsync({
+      until: async () => loanProcessorStateMachine.isExecutionFinishedAsync(),
+      intervalSeconds: 10,
+      timeoutSeconds: 90,
+    });
+
+    // Assert
+
+    expect(timedOut).toEqual(false);
+
+    const status = await loanProcessorStateMachine.getStatusAsync();
+
+    expect(status).toEqual('FAILED');
+
+    const lastEvent = await loanProcessorStateMachine.getLastEventAsync();
+
+    expect(
+      lastEvent?.executionFailedEventDetails?.error === '"States.???"'
+    );
   });
 });

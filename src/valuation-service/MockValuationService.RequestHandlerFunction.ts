@@ -24,15 +24,19 @@ export const handler = async (event: APIGatewayEvent): Promise<any> => {
 
   const valuationRequest = JSON.parse(event.body) as ValuationRequest;
 
+  const valuationReference = nanoid();
+
+  const valuationRequestResponse: ValuationRequestResponse = {
+    valuationReference,
+  };
+
   if (valuationRequest.property.nameOrNumber === 'Ghost') {
     return {
       statusCode: 201,
-      headers: { 'Content-Type': 'application/text' },
-      body: 'Ghosting',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(valuationRequestResponse),
     };
   }
-
-  const valuationReference = nanoid();
 
   const stateMachineData: ValuationStateMachineData = {
     ...valuationRequest,
@@ -47,10 +51,6 @@ export const handler = async (event: APIGatewayEvent): Promise<any> => {
   };
 
   await stepFunctions.startExecution(params).promise();
-
-  const valuationRequestResponse: ValuationRequestResponse = {
-    valuationReference,
-  };
 
   return {
     statusCode: 201,
