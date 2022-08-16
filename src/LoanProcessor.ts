@@ -48,7 +48,7 @@ export default class LoanProcessor extends Construct {
           [ValuationRequestFunctionEnv.TASK_TOKEN_TABLE_NAME]:
             taskTokenTable.tableName,
         },
-      }
+      },
     );
 
     taskTokenTable.grantWriteData(valuationRequestFunction);

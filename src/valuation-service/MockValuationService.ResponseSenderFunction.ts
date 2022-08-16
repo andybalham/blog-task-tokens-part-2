@@ -12,8 +12,13 @@ export const handler = async (
   console.log(JSON.stringify({ event }, null, 2));
 
   const valuationResponse: ValuationResponse = {
-    valuationReference: event.valuationReference,
+    valuationReference:
+      event.property.nameOrNumber === 'Unknown response'
+        ? 'unknown-ref'
+        : event.valuationReference,
     propertyValue: 666000,
+    failed:
+      event.property.nameOrNumber === 'Failed response' ? true : undefined,
   };
 
   const response = await axios.post(event.callbackUrl, valuationResponse);

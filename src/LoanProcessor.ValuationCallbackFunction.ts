@@ -38,12 +38,23 @@ export const handler = async (event: APIGatewayEvent): Promise<void> => {
 
   // TODO 26Jul22: We need to use a try catch here, or have a DLQ
 
-  const taskSuccessResponse = await stepFunctions
-    .sendTaskSuccess({
-      taskToken: taskTokenItem.taskToken,
-      output: JSON.stringify(valuationResponse),
-    })
-    .promise();
+  if (valuationResponse.failed) {
+    const taskFailureOutput = await stepFunctions
+      .sendTaskFailure({
+        taskToken: taskTokenItem.taskToken,
+        error: 'Valuation Failed',
+      })
+      .promise();
 
-  console.log(JSON.stringify({ taskSuccessResponse }, null, 2));
+    console.log(JSON.stringify({ taskFailureOutput }, null, 2));
+  } else {
+    const taskSuccessResponse = await stepFunctions
+      .sendTaskSuccess({
+        taskToken: taskTokenItem.taskToken,
+        output: JSON.stringify(valuationResponse),
+      })
+      .promise();
+
+    console.log(JSON.stringify({ taskSuccessResponse }, null, 2));
+  }
 };

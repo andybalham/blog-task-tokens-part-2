@@ -30,7 +30,7 @@ export const handler = async (event: APIGatewayEvent): Promise<any> => {
     valuationReference,
   };
 
-  if (valuationRequest.property.nameOrNumber === 'Ghost') {
+  if (valuationRequest.property.nameOrNumber === 'No callback') {
     return {
       statusCode: 201,
       headers: { 'Content-Type': 'application/json' },
@@ -42,7 +42,7 @@ export const handler = async (event: APIGatewayEvent): Promise<any> => {
     ...valuationRequest,
     valuationReference,
     delaySeconds:
-      valuationRequest.property.nameOrNumber === 'Hang on a minute' ? 60 : 6,
+      valuationRequest.property.nameOrNumber === 'Late callback' ? 60 : 6,
   };
 
   const params: StartExecutionInput = {

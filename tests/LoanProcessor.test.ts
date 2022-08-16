@@ -29,7 +29,7 @@ describe('TaskTokenTestStack Test Suite', () => {
     await testClient.initialiseTestAsync();
   });
 
-  it('tests a prompt reply', async () => {
+  it('tests a prompt callback', async () => {
     // Arrange
 
     const loanApplication: LoanApplication = {
@@ -53,15 +53,19 @@ describe('TaskTokenTestStack Test Suite', () => {
     // Assert
 
     expect(timedOut).toEqual(false);
+
+    const status = await loanProcessorStateMachine.getStatusAsync();
+
+    expect(status).toEqual('SUCCEEDED');
   });
 
-  it('tests a late reply', async () => {
+  it('tests a late callback', async () => {
     // Arrange
 
     const loanApplication: LoanApplication = {
       applicationReference: `app-${nanoid()}`,
       property: {
-        nameOrNumber: 'Hang on a minute',
+        nameOrNumber: 'Late callback',
         postcode: 'PO1 1CE',
       },
     };
@@ -89,17 +93,17 @@ describe('TaskTokenTestStack Test Suite', () => {
     const lastEvent = await loanProcessorStateMachine.getLastEventAsync();
 
     expect(
-      lastEvent?.executionFailedEventDetails?.error === '"States.Timeout"'
-    );
+      lastEvent?.executionFailedEventDetails?.error === 'States.Timeout'
+    ).toBeTruthy();
   });
 
-  it('tests no reply', async () => {
+  it('tests no callback', async () => {
     // Arrange
 
     const loanApplication: LoanApplication = {
       applicationReference: `app-${nanoid()}`,
       property: {
-        nameOrNumber: 'Ghost',
+        nameOrNumber: 'No callback',
         postcode: 'PO1 1CE',
       },
     };
@@ -127,17 +131,55 @@ describe('TaskTokenTestStack Test Suite', () => {
     const lastEvent = await loanProcessorStateMachine.getLastEventAsync();
 
     expect(
-      lastEvent?.executionFailedEventDetails?.error === '"States.Timeout"'
-    );
+      lastEvent?.executionFailedEventDetails?.error === 'States.Timeout'
+    ).toBeTruthy();
   });
 
-  it('tests failed valuation', async () => {
+  it('tests unknown response', async () => {
     // Arrange
 
     const loanApplication: LoanApplication = {
       applicationReference: `app-${nanoid()}`,
       property: {
-        nameOrNumber: 'Fake',
+        nameOrNumber: 'Unknown response',
+        postcode: 'PO1 1CE',
+      },
+    };
+
+    // Act
+
+    await loanProcessorStateMachine.startExecutionAsync(loanApplication);
+
+    // Await
+
+    const { timedOut } = await testClient.pollTestAsync({
+      until: async () => loanProcessorStateMachine.isExecutionFinishedAsync(),
+      intervalSeconds: 10,
+      timeoutSeconds: 60,
+    });
+
+    // Assert
+
+    expect(timedOut).toEqual(false);
+
+    const status = await loanProcessorStateMachine.getStatusAsync();
+
+    expect(status).toEqual('FAILED');
+
+    const lastEvent = await loanProcessorStateMachine.getLastEventAsync();
+
+    expect(
+      lastEvent?.executionFailedEventDetails?.error === 'States.Timeout'
+    ).toBeTruthy();
+  });
+
+  it('tests failed response', async () => {
+    // Arrange
+
+    const loanApplication: LoanApplication = {
+      applicationReference: `app-${nanoid()}`,
+      property: {
+        nameOrNumber: 'Failed response',
         postcode: 'PO1 1CE',
       },
     };
@@ -165,7 +207,7 @@ describe('TaskTokenTestStack Test Suite', () => {
     const lastEvent = await loanProcessorStateMachine.getLastEventAsync();
 
     expect(
-      lastEvent?.executionFailedEventDetails?.error === '"States.???"'
-    );
+      lastEvent?.executionFailedEventDetails?.error === 'Valuation Failed'
+    ).toBeTruthy();
   });
 });
