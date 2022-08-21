@@ -23,7 +23,10 @@ export default class MockValuationService extends Construct {
 
     const responseSenderFunction = new NodejsFunction(
       this,
-      'ResponseSenderFunction'
+      'ResponseSenderFunction',
+      {
+        logRetention: RetentionDays.ONE_DAY,
+      }
     );
 
     const stateMachine = new StateMachine(this, 'MockValuationStateMachine', {
@@ -34,7 +37,6 @@ export default class MockValuationService extends Construct {
           retention: RetentionDays.ONE_DAY,
         }),
         level: LogLevel.ALL,
-
         includeExecutionData: false,
       },
       definition: new StateMachineBuilder()
@@ -60,6 +62,7 @@ export default class MockValuationService extends Construct {
         environment: {
           [STATE_MACHINE_ARN]: stateMachine.stateMachineArn,
         },
+        logRetention: RetentionDays.ONE_DAY,
       }
     );
 

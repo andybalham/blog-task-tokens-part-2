@@ -3,15 +3,18 @@ import { HttpLambdaIntegration } from '@aws-cdk/aws-apigatewayv2-integrations-al
 import { Duration, RemovalPolicy } from 'aws-cdk-lib';
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { RetentionDays } from 'aws-cdk-lib/aws-logs';
+import { ITopic, Topic } from 'aws-cdk-lib/aws-sns';
 import {
   Chain,
+  Fail,
   IntegrationPattern,
   IStateMachine,
   JsonPath,
   StateMachine,
   TaskInput,
 } from 'aws-cdk-lib/aws-stepfunctions';
-import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import { LambdaInvoke, SnsPublish } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Construct } from 'constructs';
 import { ValuationCallbackFunctionEnv } from './LoanProcessor.ValuationCallbackFunction';
 import { ValuationRequestFunctionEnv } from './LoanProcessor.ValuationRequestFunction';
@@ -22,6 +25,14 @@ export interface LoanProcessorProps {
 
 export default class LoanProcessor extends Construct {
   readonly stateMachine: IStateMachine;
+
+  readonly errorTopic: ITopic;
+
+  static readonly VALUATION_SERVICE_TIMED_OUT_ERROR =
+    'ValuationServiceTimedOut';
+
+  static readonly VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION =
+    'The valuation service timed out';
 
   constructor(scope: Construct, id: string, props: LoanProcessorProps) {
     super(scope, id);
@@ -48,7 +59,8 @@ export default class LoanProcessor extends Construct {
           [ValuationRequestFunctionEnv.TASK_TOKEN_TABLE_NAME]:
             taskTokenTable.tableName,
         },
-      },
+        logRetention: RetentionDays.ONE_DAY,
+      }
     );
 
     taskTokenTable.grantWriteData(valuationRequestFunction);
@@ -62,11 +74,34 @@ export default class LoanProcessor extends Construct {
       }),
       heartbeat: Duration.seconds(10),
       timeout: Duration.seconds(30),
-      // payloadResponseOnly: true,
     });
 
+    this.errorTopic = new Topic(this, 'ErrorTopic');
+
+    const handleValuationServiceTimeout = new SnsPublish(
+      this,
+      'PublishTimeoutError',
+      {
+        topic: this.errorTopic,
+        message: TaskInput.fromObject({
+          description:
+            LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION,
+          'ExecutionId.$': '$$.Execution.Id',
+          'ExecutionStartTime.$': '$$.Execution.StartTime',
+        }),
+      }
+    ).next(
+      new Fail(this, 'ValuationServiceTimedOut', {
+        error: LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR,
+      })
+    );
+
     this.stateMachine = new StateMachine(this, 'LoanProcessorStateMachine', {
-      definition: Chain.start(requestValuationTask),
+      definition: Chain.start(
+        requestValuationTask.addCatch(handleValuationServiceTimeout, {
+          errors: ['States.Timeout'],
+        })
+      ),
     });
 
     const valuationCallbackFunction = new NodejsFunction(
@@ -77,6 +112,7 @@ export default class LoanProcessor extends Construct {
           [ValuationCallbackFunctionEnv.TASK_TOKEN_TABLE_NAME]:
             taskTokenTable.tableName,
         },
+        logRetention: RetentionDays.ONE_DAY,
       }
     );
 

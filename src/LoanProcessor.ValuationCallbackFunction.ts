@@ -37,6 +37,7 @@ export const handler = async (event: APIGatewayEvent): Promise<void> => {
   console.log(JSON.stringify({ taskTokenItem }, null, 2));
 
   // TODO 26Jul22: We need to use a try catch here, or have a DLQ
+  // We can't have a DLQ, because it isn't called asynchronously
 
   if (valuationResponse.failed) {
     const taskFailureOutput = await stepFunctions

@@ -14,10 +14,13 @@ export default class TaskTokenTestStack extends IntegrationTestStack {
 
   static readonly LoanProcessorStateMachineId = 'LoanProcessorStateMachineId';
 
+  static readonly ErrorTopicObserverId = 'ErrorTopicObserverId';
+
   constructor(scope: Construct, id: string, props?: StackProps) {
     super(scope, id, {
-      testStackId: TaskTokenTestStack.Id,
       ...props,
+      testStackId: TaskTokenTestStack.Id,
+      testFunctionIds: [TaskTokenTestStack.ErrorTopicObserverId],
     });
 
     const valuationService = new MockValuationService(
@@ -32,6 +35,11 @@ export default class TaskTokenTestStack extends IntegrationTestStack {
     this.addTestResourceTag(
       loanProcessor.stateMachine,
       TaskTokenTestStack.LoanProcessorStateMachineId
+    );
+
+    this.addSNSTopicSubscriber(
+      loanProcessor.errorTopic,
+      TaskTokenTestStack.ErrorTopicObserverId
     );
   }
 }

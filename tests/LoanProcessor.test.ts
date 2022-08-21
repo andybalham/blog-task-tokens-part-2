@@ -2,9 +2,12 @@
 import {
   IntegrationTestClient,
   StepFunctionsTestClient,
+  TestObservation,
 } from '@andybalham/cdk-cloud-test-kit';
+import { SNSEvent, SNSEventRecord } from 'aws-lambda';
 import { nanoid } from 'nanoid';
-import { LoanApplication } from 'src/LoanApplication';
+import { LoanApplication } from '../src/LoanApplication';
+import LoanProcessor from '../src/LoanProcessor';
 import TaskTokenTestStack from '../src/TaskTokenTestStack';
 
 jest.setTimeout(2 * 60 * 1000);
@@ -93,8 +96,31 @@ describe('TaskTokenTestStack Test Suite', () => {
     const lastEvent = await loanProcessorStateMachine.getLastEventAsync();
 
     expect(
-      lastEvent?.executionFailedEventDetails?.error === 'States.Timeout'
+      lastEvent?.executionFailedEventDetails?.error ===
+        LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR
     ).toBeTruthy();
+
+    const testObservations = await testClient.getTestObservationsAsync();
+
+    const errorEvents = TestObservation.filterById(
+      testObservations,
+      TaskTokenTestStack.ErrorTopicObserverId
+    );
+
+    const errorRecords = TestObservation.getEventRecords<
+      SNSEvent,
+      SNSEventRecord
+    >(errorEvents);
+
+    expect(errorRecords.length).toBeGreaterThan(0);
+
+    const errorMessage = JSON.parse(errorRecords[0].Sns.Message);
+
+    expect(errorMessage.description).toBe(
+      LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION
+    );
+    expect(errorMessage.ExecutionId).toBeDefined();
+    expect(errorMessage.ExecutionStartTime).toBeDefined();
   });
 
   it('tests no callback', async () => {
@@ -131,7 +157,8 @@ describe('TaskTokenTestStack Test Suite', () => {
     const lastEvent = await loanProcessorStateMachine.getLastEventAsync();
 
     expect(
-      lastEvent?.executionFailedEventDetails?.error === 'States.Timeout'
+      lastEvent?.executionFailedEventDetails?.error ===
+        LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR
     ).toBeTruthy();
   });
 
