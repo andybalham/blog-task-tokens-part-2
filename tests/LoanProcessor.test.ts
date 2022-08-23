@@ -80,7 +80,9 @@ describe('TaskTokenTestStack Test Suite', () => {
     // Await
 
     const { timedOut } = await testClient.pollTestAsync({
-      until: async () => loanProcessorStateMachine.isExecutionFinishedAsync(),
+      until: async (o) =>
+        (await loanProcessorStateMachine.isExecutionFinishedAsync()) &&
+        o.length > 0,
       intervalSeconds: 10,
       timeoutSeconds: 60,
     });
@@ -102,17 +104,15 @@ describe('TaskTokenTestStack Test Suite', () => {
 
     const testObservations = await testClient.getTestObservationsAsync();
 
-    const errorEvents = TestObservation.filterById(
-      testObservations,
-      TaskTokenTestStack.ErrorTopicObserverId
-    );
-
     const errorRecords = TestObservation.getEventRecords<
       SNSEvent,
       SNSEventRecord
-    >(errorEvents);
-
-    expect(errorRecords.length).toBeGreaterThan(0);
+    >(
+      TestObservation.filterById(
+        testObservations,
+        TaskTokenTestStack.ErrorTopicObserverId
+      )
+    );
 
     const errorMessage = JSON.parse(errorRecords[0].Sns.Message);
 
@@ -141,7 +141,9 @@ describe('TaskTokenTestStack Test Suite', () => {
     // Await
 
     const { timedOut } = await testClient.pollTestAsync({
-      until: async () => loanProcessorStateMachine.isExecutionFinishedAsync(),
+      until: async (o) =>
+        (await loanProcessorStateMachine.isExecutionFinishedAsync()) &&
+        o.length > 0,
       intervalSeconds: 10,
       timeoutSeconds: 90,
     });
@@ -162,13 +164,13 @@ describe('TaskTokenTestStack Test Suite', () => {
     ).toBeTruthy();
   });
 
-  it('tests unknown response', async () => {
+  it('tests unknown reference', async () => {
     // Arrange
 
     const loanApplication: LoanApplication = {
       applicationReference: `app-${nanoid()}`,
       property: {
-        nameOrNumber: 'Unknown response',
+        nameOrNumber: 'Unknown reference',
         postcode: 'PO1 1CE',
       },
     };
@@ -180,7 +182,9 @@ describe('TaskTokenTestStack Test Suite', () => {
     // Await
 
     const { timedOut } = await testClient.pollTestAsync({
-      until: async () => loanProcessorStateMachine.isExecutionFinishedAsync(),
+      until: async (o) =>
+        (await loanProcessorStateMachine.isExecutionFinishedAsync()) &&
+        o.length > 1,
       intervalSeconds: 10,
       timeoutSeconds: 60,
     });
@@ -196,8 +200,31 @@ describe('TaskTokenTestStack Test Suite', () => {
     const lastEvent = await loanProcessorStateMachine.getLastEventAsync();
 
     expect(
-      lastEvent?.executionFailedEventDetails?.error === 'States.Timeout'
+      lastEvent?.executionFailedEventDetails?.error ===
+        LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR
     ).toBeTruthy();
+
+    const testObservations = await testClient.getTestObservationsAsync();
+
+    const errorRecords = TestObservation.getEventRecords<
+      SNSEvent,
+      SNSEventRecord
+    >(
+      TestObservation.filterById(
+        testObservations,
+        TaskTokenTestStack.ErrorTopicObserverId
+      )
+    );
+
+    expect(errorRecords.length).toBeGreaterThan(1);
+
+    // const errorMessage = JSON.parse(errorRecords[0].Sns.Message);
+
+    // expect(errorMessage.description).toBe(
+    //   LoanProcessor.VALUATION_FAILED_ERROR_DESCRIPTION
+    // );
+    // expect(errorMessage.ExecutionId).toBeDefined();
+    // expect(errorMessage.ExecutionStartTime).toBeDefined();
   });
 
   it('tests failed response', async () => {
@@ -218,7 +245,9 @@ describe('TaskTokenTestStack Test Suite', () => {
     // Await
 
     const { timedOut } = await testClient.pollTestAsync({
-      until: async () => loanProcessorStateMachine.isExecutionFinishedAsync(),
+      until: async (o) =>
+        (await loanProcessorStateMachine.isExecutionFinishedAsync()) &&
+        o.length > 0,
       intervalSeconds: 10,
       timeoutSeconds: 90,
     });
@@ -234,7 +263,28 @@ describe('TaskTokenTestStack Test Suite', () => {
     const lastEvent = await loanProcessorStateMachine.getLastEventAsync();
 
     expect(
-      lastEvent?.executionFailedEventDetails?.error === 'Valuation Failed'
+      lastEvent?.executionFailedEventDetails?.error ===
+        LoanProcessor.VALUATION_FAILED_ERROR
     ).toBeTruthy();
+
+    const testObservations = await testClient.getTestObservationsAsync();
+
+    const errorRecords = TestObservation.getEventRecords<
+      SNSEvent,
+      SNSEventRecord
+    >(
+      TestObservation.filterById(
+        testObservations,
+        TaskTokenTestStack.ErrorTopicObserverId
+      )
+    );
+
+    const errorMessage = JSON.parse(errorRecords[0].Sns.Message);
+
+    expect(errorMessage.description).toBe(
+      LoanProcessor.VALUATION_FAILED_ERROR_DESCRIPTION
+    );
+    expect(errorMessage.ExecutionId).toBeDefined();
+    expect(errorMessage.ExecutionStartTime).toBeDefined();
   });
 });

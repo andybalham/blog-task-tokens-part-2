@@ -34,6 +34,10 @@ export default class LoanProcessor extends Construct {
   static readonly VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION =
     'The valuation service timed out';
 
+  static readonly VALUATION_FAILED_ERROR = 'ValuationFailed';
+
+  static readonly VALUATION_FAILED_ERROR_DESCRIPTION = 'The valuation failed';
+
   constructor(scope: Construct, id: string, props: LoanProcessorProps) {
     super(scope, id);
 
@@ -80,7 +84,7 @@ export default class LoanProcessor extends Construct {
 
     const handleValuationServiceTimeout = new SnsPublish(
       this,
-      'PublishTimeoutError',
+      'PublishValuationServiceTimeoutError',
       {
         topic: this.errorTopic,
         message: TaskInput.fromObject({
@@ -96,11 +100,32 @@ export default class LoanProcessor extends Construct {
       })
     );
 
+    const handleValuationFailed = new SnsPublish(
+      this,
+      'PublishValuationFailedError',
+      {
+        topic: this.errorTopic,
+        message: TaskInput.fromObject({
+          description: LoanProcessor.VALUATION_FAILED_ERROR_DESCRIPTION,
+          'ExecutionId.$': '$$.Execution.Id',
+          'ExecutionStartTime.$': '$$.Execution.StartTime',
+        }),
+      }
+    ).next(
+      new Fail(this, 'ValuationFailed', {
+        error: LoanProcessor.VALUATION_FAILED_ERROR,
+      })
+    );
+
     this.stateMachine = new StateMachine(this, 'LoanProcessorStateMachine', {
       definition: Chain.start(
-        requestValuationTask.addCatch(handleValuationServiceTimeout, {
-          errors: ['States.Timeout'],
-        })
+        requestValuationTask
+          .addCatch(handleValuationServiceTimeout, {
+            errors: ['States.Timeout'],
+          })
+          .addCatch(handleValuationFailed, {
+            errors: ['ValuationFailed'],
+          })
       ),
     });
 
@@ -111,14 +136,16 @@ export default class LoanProcessor extends Construct {
         environment: {
           [ValuationCallbackFunctionEnv.TASK_TOKEN_TABLE_NAME]:
             taskTokenTable.tableName,
+          [ValuationCallbackFunctionEnv.ERROR_TOPIC_ARN]:
+            this.errorTopic.topicArn,
         },
         logRetention: RetentionDays.ONE_DAY,
       }
     );
 
-    this.stateMachine.grantTaskResponse(valuationCallbackFunction);
-
     taskTokenTable.grantReadData(valuationCallbackFunction);
+    this.stateMachine.grantTaskResponse(valuationCallbackFunction);
+    this.errorTopic.grantPublish(valuationCallbackFunction);
 
     valuationCallbackApi.addRoutes({
       path: `/${VALUATION_CALLBACK_PATH}`,

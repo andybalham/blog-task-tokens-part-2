@@ -13,7 +13,7 @@ export const handler = async (
 
   const valuationResponse: ValuationResponse = {
     valuationReference:
-      event.property.nameOrNumber === 'Unknown response'
+      event.property.nameOrNumber === 'Unknown reference'
         ? 'unknown-ref'
         : event.valuationReference,
     propertyValue: 666000,
