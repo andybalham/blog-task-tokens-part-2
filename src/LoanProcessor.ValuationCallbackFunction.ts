@@ -69,7 +69,7 @@ export const handler = async (event: APIGatewayEvent): Promise<void> => {
     console.error(JSON.stringify({ 'error.message': error.message }, null, 2));
 
     const publishInput: PublishInput = {
-      Message: JSON.stringify({ 'error.message': error.message, event }),
+      Message: JSON.stringify({ 'description': error.message, event }),
       TopicArn: errorTopicArn,
     };
 

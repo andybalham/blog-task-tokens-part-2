@@ -218,13 +218,22 @@ describe('TaskTokenTestStack Test Suite', () => {
 
     expect(errorRecords.length).toBeGreaterThan(1);
 
-    // const errorMessage = JSON.parse(errorRecords[0].Sns.Message);
+    const hasTimedOutError = errorRecords.some((r) => {
+      const message = JSON.parse(r.Sns.Message);
+      return (
+        message.description ===
+        LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION
+      );
+    });
 
-    // expect(errorMessage.description).toBe(
-    //   LoanProcessor.VALUATION_FAILED_ERROR_DESCRIPTION
-    // );
-    // expect(errorMessage.ExecutionId).toBeDefined();
-    // expect(errorMessage.ExecutionStartTime).toBeDefined();
+    expect(hasTimedOutError).toBeTruthy();
+
+    const hasUnknownReferenceError = errorRecords.some((r) => {
+      const message = JSON.parse(r.Sns.Message);
+      return message.description === 'Unknown valuation reference';
+    });
+
+    expect(hasUnknownReferenceError).toBeTruthy();
   });
 
   it('tests failed response', async () => {
