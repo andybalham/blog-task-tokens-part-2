@@ -22,6 +22,11 @@
     "TRes",
     "vars"
   ],
+  "workbench.colorCustomizations": {
+    "[Default Dark+]": {
+      "titleBar.activeBackground": "#858300"
+    }
+  },
   "serverlessConsole.services": [
     {
       "type": "cloudformation",
