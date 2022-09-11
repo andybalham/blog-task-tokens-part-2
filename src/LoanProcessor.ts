@@ -7,14 +7,13 @@ import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { ITopic, Topic } from 'aws-cdk-lib/aws-sns';
 import {
   Chain,
-  Fail,
   IntegrationPattern,
   IStateMachine,
   JsonPath,
   StateMachine,
   TaskInput,
 } from 'aws-cdk-lib/aws-stepfunctions';
-import { LambdaInvoke, SnsPublish } from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Construct } from 'constructs';
 import { ValuationCallbackFunctionEnv } from './LoanProcessor.ValuationCallbackFunction';
 import { ValuationRequestFunctionEnv } from './LoanProcessor.ValuationRequestFunction';
@@ -76,56 +75,55 @@ export default class LoanProcessor extends Construct {
         taskToken: JsonPath.taskToken,
         'loanApplication.$': '$',
       }),
-      heartbeat: Duration.seconds(10),
-      timeout: Duration.seconds(30),
+      timeout: Duration.seconds(30), // Don't wait forever for a reply
     });
 
     this.errorTopic = new Topic(this, 'ErrorTopic');
 
-    const handleValuationServiceTimeout = new SnsPublish(
-      this,
-      'PublishValuationServiceTimeoutError',
-      {
-        topic: this.errorTopic,
-        message: TaskInput.fromObject({
-          description:
-            LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION,
-          'ExecutionId.$': '$$.Execution.Id',
-          'ExecutionStartTime.$': '$$.Execution.StartTime',
-        }),
-      }
-    ).next(
-      new Fail(this, 'ValuationServiceTimedOut', {
-        error: LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR,
-      })
-    );
+    // const handleValuationServiceTimeout = new SnsPublish(
+    //   this,
+    //   'PublishValuationServiceTimeoutError',
+    //   {
+    //     topic: this.errorTopic,
+    //     message: TaskInput.fromObject({
+    //       description:
+    //         LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION,
+    //       'ExecutionId.$': '$$.Execution.Id',
+    //       'ExecutionStartTime.$': '$$.Execution.StartTime',
+    //     }),
+    //   }
+    // ).next(
+    //   new Fail(this, 'ValuationServiceTimedOut', {
+    //     error: LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR,
+    //   })
+    // );
 
-    const handleValuationFailed = new SnsPublish(
-      this,
-      'PublishValuationFailedError',
-      {
-        topic: this.errorTopic,
-        message: TaskInput.fromObject({
-          description: LoanProcessor.VALUATION_FAILED_ERROR_DESCRIPTION,
-          'ExecutionId.$': '$$.Execution.Id',
-          'ExecutionStartTime.$': '$$.Execution.StartTime',
-        }),
-      }
-    ).next(
-      new Fail(this, 'ValuationFailed', {
-        error: LoanProcessor.VALUATION_FAILED_ERROR,
-      })
-    );
+    // const handleValuationFailed = new SnsPublish(
+    //   this,
+    //   'PublishValuationFailedError',
+    //   {
+    //     topic: this.errorTopic,
+    //     message: TaskInput.fromObject({
+    //       description: LoanProcessor.VALUATION_FAILED_ERROR_DESCRIPTION,
+    //       'ExecutionId.$': '$$.Execution.Id',
+    //       'ExecutionStartTime.$': '$$.Execution.StartTime',
+    //     }),
+    //   }
+    // ).next(
+    //   new Fail(this, 'ValuationFailed', {
+    //     error: LoanProcessor.VALUATION_FAILED_ERROR,
+    //   })
+    // );
 
     this.stateMachine = new StateMachine(this, 'LoanProcessorStateMachine', {
       definition: Chain.start(
         requestValuationTask
-          .addCatch(handleValuationServiceTimeout, {
-            errors: ['States.Timeout'],
-          })
-          .addCatch(handleValuationFailed, {
-            errors: ['ValuationFailed'],
-          })
+        // .addCatch(handleValuationServiceTimeout, {
+        //   errors: ['States.Timeout'],
+        // })
+        // .addCatch(handleValuationFailed, {
+        //   errors: ['ValuationFailed'],
+        // })
       ),
     });
 

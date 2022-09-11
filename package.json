@@ -9,7 +9,8 @@
     "lint-and-fix": "eslint ./src --ext .ts --fix",
     "build": "npm run lint && tsc",
     "cdk-synth": "cdk synth TaskTokenTestStack > .cdk-synth.yml",
-    "cdk-deploy": "cdk deploy TaskTokenTestStack --hotswap",
+    "cdk-hotswap": "cdk deploy TaskTokenTestStack --hotswap",
+    "cdk-deploy": "cdk deploy TaskTokenTestStack",
     "cdk-destroy": "cdk destroy --all"
   },
   "repository": {

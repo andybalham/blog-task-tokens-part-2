@@ -3,7 +3,6 @@ This is a companion repo for the blog post TODO
 We need to add the following to the definition:
 
 ```TypeScript
-      heartbeat: Duration.seconds(10),
       timeout: Duration.seconds(30),
 ```
 
