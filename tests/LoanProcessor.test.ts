@@ -79,10 +79,10 @@ describe('TaskTokenTestStack Test Suite', () => {
 
     // Await
 
-    const { timedOut } = await testClient.pollTestAsync({
+    const { timedOut, observations } = await testClient.pollTestAsync({
       until: async (o) =>
         (await loanProcessorStateMachine.isExecutionFinishedAsync()) &&
-        o.length > 0,
+        o.length > 1,
       intervalSeconds: 10,
       timeoutSeconds: 60,
     });
@@ -102,14 +102,12 @@ describe('TaskTokenTestStack Test Suite', () => {
         LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR
     ).toBeTruthy();
 
-    const testObservations = await testClient.getTestObservationsAsync();
-
     const errorRecords = TestObservation.getEventRecords<
       SNSEvent,
       SNSEventRecord
     >(
       TestObservation.filterById(
-        testObservations,
+        observations,
         TaskTokenTestStack.ErrorTopicObserverId
       )
     );
@@ -119,8 +117,8 @@ describe('TaskTokenTestStack Test Suite', () => {
     expect(errorMessage.description).toBe(
       LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION
     );
-    expect(errorMessage.ExecutionId).toBeDefined();
-    expect(errorMessage.ExecutionStartTime).toBeDefined();
+    expect(errorMessage.executionId).toBeDefined();
+    expect(errorMessage.executionStartTime).toBeDefined();
   });
 
   it('tests no callback', async () => {

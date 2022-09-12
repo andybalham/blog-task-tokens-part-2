@@ -42,7 +42,7 @@ export const handler = async (event: APIGatewayEvent): Promise<any> => {
     ...valuationRequest,
     valuationReference,
     delaySeconds:
-      valuationRequest.property.nameOrNumber === 'Late callback' ? 60 : 6,
+      valuationRequest.property.nameOrNumber === 'Late callback' ? 45 : 6,
   };
 
   const params: StartExecutionInput = {

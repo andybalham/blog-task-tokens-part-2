@@ -24,8 +24,9 @@
   ],
   "workbench.colorCustomizations": {
     "[Default Dark+]": {
-      "titleBar.activeBackground": "#858300",
-      "activityBar.background": "#858300"
+      "titleBar.activeBackground": "#490000",
+      "activityBar.background": "#494800",
+      "sideBar.background": "#302d00"
     }
   },
   "serverlessConsole.services": [

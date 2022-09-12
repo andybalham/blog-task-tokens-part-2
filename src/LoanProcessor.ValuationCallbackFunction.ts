@@ -3,7 +3,7 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 
-import { APIGatewayEvent } from 'aws-lambda';
+import { APIGatewayEvent, Context } from 'aws-lambda';
 import SNS, { PublishInput } from 'aws-sdk/clients/sns';
 import StepFunctions from 'aws-sdk/clients/stepfunctions';
 import TaskTokenStore from './TaskTokenStore';
@@ -25,7 +25,10 @@ const errorTopicArn =
 const stepFunctions = new StepFunctions();
 const sns = new SNS();
 
-export const handler = async (event: APIGatewayEvent): Promise<void> => {
+export const handler = async (
+  event: APIGatewayEvent,
+  context: Context
+): Promise<void> => {
   console.log(JSON.stringify({ event }, null, 2));
 
   // We use a try catch here, as we can't have a DLQ, because it isn't called asynchronously
@@ -68,11 +71,20 @@ export const handler = async (event: APIGatewayEvent): Promise<void> => {
   } catch (error: any) {
     console.error(JSON.stringify({ 'error.message': error.message }, null, 2));
 
-    const publishInput: PublishInput = {
-      Message: JSON.stringify({ 'description': error.message, event }),
+    const publishError: PublishInput = {
+      Message: JSON.stringify({
+        source: context.invokedFunctionArn,
+        description: error.message,
+        eventRequestId: event.requestContext.requestId,
+        eventBody: event.body,
+      }),
       TopicArn: errorTopicArn,
     };
 
-    await sns.publish(publishInput).promise();
+    console.log(JSON.stringify({ publishError }, null, 2));
+
+    const publishErrorResponse = await sns.publish(publishError).promise();
+
+    console.log(JSON.stringify({ publishErrorResponse }, null, 2));
   }
 };

@@ -7,13 +7,14 @@ import { RetentionDays } from 'aws-cdk-lib/aws-logs';
 import { ITopic, Topic } from 'aws-cdk-lib/aws-sns';
 import {
   Chain,
+  Fail,
   IntegrationPattern,
   IStateMachine,
   JsonPath,
   StateMachine,
   TaskInput,
 } from 'aws-cdk-lib/aws-stepfunctions';
-import { LambdaInvoke } from 'aws-cdk-lib/aws-stepfunctions-tasks';
+import { LambdaInvoke, SnsPublish } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Construct } from 'constructs';
 import { ValuationCallbackFunctionEnv } from './LoanProcessor.ValuationCallbackFunction';
 import { ValuationRequestFunctionEnv } from './LoanProcessor.ValuationRequestFunction';
@@ -80,23 +81,24 @@ export default class LoanProcessor extends Construct {
 
     this.errorTopic = new Topic(this, 'ErrorTopic');
 
-    // const handleValuationServiceTimeout = new SnsPublish(
-    //   this,
-    //   'PublishValuationServiceTimeoutError',
-    //   {
-    //     topic: this.errorTopic,
-    //     message: TaskInput.fromObject({
-    //       description:
-    //         LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION,
-    //       'ExecutionId.$': '$$.Execution.Id',
-    //       'ExecutionStartTime.$': '$$.Execution.StartTime',
-    //     }),
-    //   }
-    // ).next(
-    //   new Fail(this, 'ValuationServiceTimedOut', {
-    //     error: LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR,
-    //   })
-    // );
+    const handleValuationServiceTimeout = new SnsPublish(
+      this,
+      'PublishValuationServiceTimeoutError',
+      {
+        topic: this.errorTopic,
+        message: TaskInput.fromObject({
+          'source.$': '$$.StateMachine.Id',
+          description:
+            LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION,
+          'executionId.$': '$$.Execution.Id',
+          'executionStartTime.$': '$$.Execution.StartTime',
+        }),
+      }
+    ).next(
+      new Fail(this, 'ValuationServiceTimedOut', {
+        error: LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR,
+      })
+    );
 
     // const handleValuationFailed = new SnsPublish(
     //   this,
@@ -117,10 +119,9 @@ export default class LoanProcessor extends Construct {
 
     this.stateMachine = new StateMachine(this, 'LoanProcessorStateMachine', {
       definition: Chain.start(
-        requestValuationTask
-        // .addCatch(handleValuationServiceTimeout, {
-        //   errors: ['States.Timeout'],
-        // })
+        requestValuationTask.addCatch(handleValuationServiceTimeout, {
+          errors: ['States.Timeout'],
+        })
         // .addCatch(handleValuationFailed, {
         //   errors: ['ValuationFailed'],
         // })
