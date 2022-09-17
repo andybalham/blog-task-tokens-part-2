@@ -35,6 +35,15 @@ Then we can test the timeout:
 }
 ```
 
+```json
+{
+  "source": "arn:aws:lambda:eu-west-2:361728023653:function:TaskTokenTestStack-LoanProcessorValuationCallbackF-BVLiHDNt868p",
+  "description": "Task Timed Out: 'Provided task does not exist anymore'",
+  "eventRequestId": "Yj3FjgbQLPEEJgA=",
+  "eventBody": "{\"valuationReference\":\"CNMgrPRrAjt3VQHjCx_L8\",\"propertyValue\":666000}"
+}
+```
+
 Links
 
 - [Integrating AWS Step Functions callbacks and external systems](https://aws.amazon.com/blogs/compute/integrating-aws-step-functions-callbacks-and-external-systems/)

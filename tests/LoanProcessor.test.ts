@@ -121,6 +121,58 @@ describe('TaskTokenTestStack Test Suite', () => {
     expect(errorMessage.executionStartTime).toBeDefined();
   });
 
+  it('tests a duplicate callback', async () => {
+    // Arrange
+
+    const loanApplication: LoanApplication = {
+      applicationReference: `app-${nanoid()}`,
+      property: {
+        nameOrNumber: 'Duplicate response',
+        postcode: 'PO1 1CE',
+      },
+    };
+
+    // Act
+
+    await loanProcessorStateMachine.startExecutionAsync(loanApplication);
+
+    // Await
+
+    const { timedOut, observations } = await testClient.pollTestAsync({
+      until: async (o) =>
+        (await loanProcessorStateMachine.isExecutionFinishedAsync()) &&
+        o.length > 0,
+      intervalSeconds: 10,
+      timeoutSeconds: 60,
+    });
+
+    // Assert
+
+    expect(timedOut).toEqual(false);
+
+    const status = await loanProcessorStateMachine.getStatusAsync();
+
+    expect(status).toEqual('SUCCEEDED');
+
+    const errorRecords = TestObservation.getEventRecords<
+      SNSEvent,
+      SNSEventRecord
+    >(
+      TestObservation.filterById(
+        observations,
+        TaskTokenTestStack.ErrorTopicObserverId
+      )
+    );
+
+    const errorMessage = JSON.parse(errorRecords[0].Sns.Message);
+
+    expect(errorMessage.description).toBe(
+      LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION
+    );
+    expect(errorMessage.executionId).toBeDefined();
+    expect(errorMessage.executionStartTime).toBeDefined();
+  });
+
   it('tests no callback', async () => {
     // Arrange
 

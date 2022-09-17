@@ -24,4 +24,19 @@ export const handler = async (
   const response = await axios.post(event.callbackUrl, valuationResponse);
 
   console.log(JSON.stringify({ 'response.status': response.status }, null, 2));
+
+  if (event.property.nameOrNumber === 'Duplicate response') {
+    const duplicateResponse = await axios.post(
+      event.callbackUrl,
+      valuationResponse
+    );
+
+    console.log(
+      JSON.stringify(
+        { 'duplicateResponse.status': duplicateResponse.status },
+        null,
+        2
+      )
+    );
+  }
 };

@@ -87,9 +87,9 @@ export default class LoanProcessor extends Construct {
       {
         topic: this.errorTopic,
         message: TaskInput.fromObject({
-          'source.$': '$$.StateMachine.Id',
           description:
             LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION,
+          'source.$': '$$.StateMachine.Id',
           'executionId.$': '$$.Execution.Id',
           'executionStartTime.$': '$$.Execution.StartTime',
         }),
@@ -100,31 +100,33 @@ export default class LoanProcessor extends Construct {
       })
     );
 
-    // const handleValuationFailed = new SnsPublish(
-    //   this,
-    //   'PublishValuationFailedError',
-    //   {
-    //     topic: this.errorTopic,
-    //     message: TaskInput.fromObject({
-    //       description: LoanProcessor.VALUATION_FAILED_ERROR_DESCRIPTION,
-    //       'ExecutionId.$': '$$.Execution.Id',
-    //       'ExecutionStartTime.$': '$$.Execution.StartTime',
-    //     }),
-    //   }
-    // ).next(
-    //   new Fail(this, 'ValuationFailed', {
-    //     error: LoanProcessor.VALUATION_FAILED_ERROR,
-    //   })
-    // );
+    const handleValuationFailed = new SnsPublish(
+      this,
+      'PublishValuationFailedError',
+      {
+        topic: this.errorTopic,
+        message: TaskInput.fromObject({
+          description: LoanProcessor.VALUATION_FAILED_ERROR_DESCRIPTION,
+          'source.$': '$$.StateMachine.Id',
+          'executionId.$': '$$.Execution.Id',
+          'executionStartTime.$': '$$.Execution.StartTime',
+        }),
+      }
+    ).next(
+      new Fail(this, 'ValuationFailed', {
+        error: LoanProcessor.VALUATION_FAILED_ERROR,
+      })
+    );
 
     this.stateMachine = new StateMachine(this, 'LoanProcessorStateMachine', {
       definition: Chain.start(
-        requestValuationTask.addCatch(handleValuationServiceTimeout, {
-          errors: ['States.Timeout'],
-        })
-        // .addCatch(handleValuationFailed, {
-        //   errors: ['ValuationFailed'],
-        // })
+        requestValuationTask
+          .addCatch(handleValuationServiceTimeout, {
+            errors: ['States.Timeout'],
+          })
+          .addCatch(handleValuationFailed, {
+            errors: ['ValuationFailed'],
+          })
       ),
     });
 
