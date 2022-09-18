@@ -112,13 +112,21 @@ describe('TaskTokenTestStack Test Suite', () => {
       )
     );
 
-    const errorMessage = JSON.parse(errorRecords[0].Sns.Message);
-
-    expect(errorMessage.description).toBe(
-      LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION
+    const valuationServiceTimedOutErrors = errorRecords.filter(
+      (r) =>
+        JSON.parse(r.Sns.Message).description ===
+        LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION
     );
-    expect(errorMessage.executionId).toBeDefined();
-    expect(errorMessage.executionStartTime).toBeDefined();
+
+    expect(valuationServiceTimedOutErrors.length).toBeGreaterThan(0);
+
+    const taskTimedOutErrors = errorRecords.filter(
+      (r) =>
+        JSON.parse(r.Sns.Message).description ===
+        "Task Timed Out: 'Provided task does not exist anymore'"
+    );
+
+    expect(taskTimedOutErrors.length).toBeGreaterThan(0);
   });
 
   it('tests a duplicate callback', async () => {
@@ -164,13 +172,13 @@ describe('TaskTokenTestStack Test Suite', () => {
       )
     );
 
-    const errorMessage = JSON.parse(errorRecords[0].Sns.Message);
-
-    expect(errorMessage.description).toBe(
-      LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION
+    const taskTimedOutErrors = errorRecords.filter(
+      (r) =>
+        JSON.parse(r.Sns.Message).description ===
+        "Task Timed Out: 'Provided task does not exist anymore'"
     );
-    expect(errorMessage.executionId).toBeDefined();
-    expect(errorMessage.executionStartTime).toBeDefined();
+
+    expect(taskTimedOutErrors.length).toBeGreaterThan(0);
   });
 
   it('tests no callback', async () => {
@@ -190,7 +198,7 @@ describe('TaskTokenTestStack Test Suite', () => {
 
     // Await
 
-    const { timedOut } = await testClient.pollTestAsync({
+    const { timedOut, observations } = await testClient.pollTestAsync({
       until: async (o) =>
         (await loanProcessorStateMachine.isExecutionFinishedAsync()) &&
         o.length > 0,
@@ -212,6 +220,24 @@ describe('TaskTokenTestStack Test Suite', () => {
       lastEvent?.executionFailedEventDetails?.error ===
         LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR
     ).toBeTruthy();
+
+    const errorRecords = TestObservation.getEventRecords<
+      SNSEvent,
+      SNSEventRecord
+    >(
+      TestObservation.filterById(
+        observations,
+        TaskTokenTestStack.ErrorTopicObserverId
+      )
+    );
+
+    const valuationServiceTimedOutErrors = errorRecords.filter(
+      (r) =>
+        JSON.parse(r.Sns.Message).description ===
+        LoanProcessor.VALUATION_SERVICE_TIMED_OUT_ERROR_DESCRIPTION
+    );
+
+    expect(valuationServiceTimedOutErrors.length).toBeGreaterThan(0);
   });
 
   it('tests unknown reference', async () => {
@@ -338,12 +364,12 @@ describe('TaskTokenTestStack Test Suite', () => {
       )
     );
 
-    const errorMessage = JSON.parse(errorRecords[0].Sns.Message);
-
-    expect(errorMessage.description).toBe(
-      LoanProcessor.VALUATION_FAILED_ERROR_DESCRIPTION
+    const valuationServiceTimedOutErrors = errorRecords.filter(
+      (r) =>
+        JSON.parse(r.Sns.Message).description ===
+        LoanProcessor.VALUATION_FAILED_ERROR_DESCRIPTION
     );
-    expect(errorMessage.ExecutionId).toBeDefined();
-    expect(errorMessage.ExecutionStartTime).toBeDefined();
+
+    expect(valuationServiceTimedOutErrors.length).toBeGreaterThan(0);
   });
 });
